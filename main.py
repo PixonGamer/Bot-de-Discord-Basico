@@ -1,7 +1,7 @@
 import discord
 import asyncio
 
-from discord import app_commands
+from discord import app_commands, NotFound, Forbidden, HTTPException
 from discord.ext import tasks
 from typing import Optional
 import random
@@ -216,6 +216,67 @@ async def seguridad_cuenta(interaction: discord.Interaction):
 			'Evita utilizar/activar el permiso "Administrador" en Roles.']
 
 
-	await interaction.response.send_message( random.choice(tips), ephemeral = True)		
+	await interaction.response.send_message( random.choice(tips), ephemeral = True)	
+	
+@client.tree.command()
+@app_commands.describe(usuario='Usuario al que quieres banear')
+@app_commands.describe(razon="Razón del baneo (Opcional)")
+async def ban(interaction: discord.Interaction, usuario: discord.Member, razon: Optional[str]):
+    """Manda de vacaciones a un usuario de tu Discord"""
+    guild = interaction.guild
+
+    try:
+        if razon is not None:
+            await guild.ban(usuario, reason=f'{razon} (Ejecutado por {interaction.user})')
+        else:
+            await guild.ban(usuario, reason=f'Sin razón especificada. (Ejecutado por {interaction.user})')
+    except NotFound:
+        await interaction.response.send_message("No se ha encontrado al miembro específicado.", ephemeral=True)
+    except Forbidden:
+        await interaction.response.send_message("No tengo los permisos necesarios para banear a este miembro.", ephemeral=True)
+    except HTTPException:
+        await interaction.response.send_message("Error HTTP desconocido.", ephemeral=True)
+
+    if razon is not None:
+        embed = discord.Embed(description=f"**{usuario}** ha sido baneado por el siguiente motivo: **{razon}**",color=0x2dc854, timestamp=interaction.created_at)
+        embed.set_author(name=f'{guild.name}', icon_url=guild.icon)
+        await interaction.response.send_message(f"Acabas de banear a **{usuario}** por el siguiente motivo: **{razon}**", ephemeral=True)
+    else:
+        embed = discord.Embed(description=f"**{usuario}** ha sido baneado.", color=0x2dc854, timestamp=interaction.created_at)
+        embed.set_author(name=f'{guild.name}', icon_url=guild.icon)
+        await interaction.response.send_message(f"Acabas de banear a **{usuario}** sin razón especificada.", ephemeral=True)
+
+    await interaction.channel.send(embed=embed)
+	
+@client.tree.command()
+@app_commands.describe(usuario='Usuario al que quieres expulsar')
+@app_commands.describe(razon="Razón del baneo (Opcional)")
+async def kick(interaction: discord.Interaction, usuario: discord.Member, razon: Optional[str]):
+    """Expulsa a un usuario de tu Discord"""
+    guild = interaction.guild
+
+    try:
+        # color = member.color, timestamp = interaction.created_at)
+        if razon is not None:
+            await guild.kick(usuario, reason=f'{razon} (Ejecutado por {interaction.user})')
+        else:
+            await guild.kick(usuario, reason=f'Sin razón especificada. (Ejecutado por {interaction.user})')
+    except NotFound:
+        await interaction.response.send_message("No se ha encontrado al miembro específicado.", ephemeral=True)
+    except Forbidden:
+        await interaction.response.send_message("No tengo los permisos necesarios para expulsar a este miembro.", ephemeral=True)
+    except HTTPException:
+        await interaction.response.send_message("Error HTTP desconocido.", ephemeral=True)
+
+    if razon is not None:
+        embed = discord.Embed(description=f"**{usuario}** ha sido expulsado por el siguiente motivo: **{razon}**",color=0x2dc854, timestamp=interaction.created_at)
+        embed.set_author(name=f'{guild.name}', icon_url=guild.icon)
+        await interaction.response.send_message(f"Acabas de expulsar a **{usuario}** por el siguiente motivo: **{razon}**", ephemeral=True)
+    else:
+        embed = discord.Embed(description=f"**{usuario}** ha sido expulsado del Discord.", color=0x2dc854, timestamp=interaction.created_at)
+        embed.set_author(name=f'{guild.name}', icon_url=guild.icon)
+        await interaction.response.send_message(f"Acabas de expulsar a **{usuario}** sin razón especificada.", ephemeral=True)
+
+    await interaction.channel.send(embed=embed)	
   
   client.run(token)
