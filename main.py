@@ -219,6 +219,8 @@ async def seguridad_cuenta(interaction: discord.Interaction):
 	await interaction.response.send_message( random.choice(tips), ephemeral = True)	
 	
 @client.tree.command()
+@app_commands.default_permissions(ban_members=True)
+@app_commands.checks.has_permissions(ban_members=True)
 @app_commands.describe(usuario='Usuario al que quieres banear')
 @app_commands.describe(razon="Razón del baneo (Opcional)")
 async def ban(interaction: discord.Interaction, usuario: discord.Member, razon: Optional[str]):
@@ -249,8 +251,10 @@ async def ban(interaction: discord.Interaction, usuario: discord.Member, razon: 
     await interaction.channel.send(embed=embed)
 	
 @client.tree.command()
+@app_commands.default_permissions(kick_members=True)
+@app_commands.checks.has_permissions(kick_members=True)
 @app_commands.describe(usuario='Usuario al que quieres expulsar')
-@app_commands.describe(razon="Razón del baneo (Opcional)")
+@app_commands.describe(razon="Razón de la expulsión (Opcional)")
 async def kick(interaction: discord.Interaction, usuario: discord.Member, razon: Optional[str]):
     """Expulsa a un usuario de tu Discord"""
     guild = interaction.guild
@@ -279,4 +283,43 @@ async def kick(interaction: discord.Interaction, usuario: discord.Member, razon:
 
     await interaction.channel.send(embed=embed)	
   
+	
+########################################################################
+
+@client.tree.command()
+@app_commands.default_permissions(manage_messages=True)
+@app_commands.checks.has_permissions(manage_messages=True)
+@app_commands.describe(canal='Canal al que quieres enviar el mensaje')
+@app_commands.describe(texto='Texto a enviar')
+@app_commands.describe(imagen='Si deseas enviar una imágen junto con el mensaje')
+async def say(interaction: discord.Interaction, canal: discord.TextChannel, texto: str, menciones: Optional[discord.Role]):
+	"""Envia un mensaje usando el Bot"""
+
+	guild = interaction.guild
+
+	try:
+		if menciones is not None:
+			await canal.send(f"{texto} \n {menciones.mention} {imagen}",)
+		else:
+			await canal.send(texto)
+	except Forbidden:
+		await interaction.response.send_message("No tengo los permisos para acceder a este canal!", ephemeral=True)
+	except HTTPException:
+		await interaction.response.send_message("Error HTTP desconocido", ephemeral=True)
+
+	await interaction.response.send_message(f"Haz enviado un anuncio al canal <#{canal.id}>", ephemeral=True)
+
+	if log_channel is not None and menciones is not None:
+		embed1 = discord.Embed(description=f"<@{interaction.user.id}> acaba de mandar un anuncio al canal <#{canal.id}>: \n **{texto}** \n mencionando el rol {menciones.mention}", color=interaction.user.color, timestamp=interaction.created_at)
+		embed1.set_author(name=f'{guild.name}', icon_url=guild.icon)
+		await log_channel.send(embed=embed1)
+	elif log_channel is not None:
+		embed1 = discord.Embed(description=f"<@{interaction.user.id}> acaba de mandar un anuncio al canal <#{canal.id}>: \n **{texto}**", color=interaction.user.color, timestamp=interaction.created_at)
+		embed1.set_author(name=f'{guild.name}', icon_url=guild.icon)
+		await log_channel.send(embed=embed1)	
+	
+	
+	
+	
+	
   client.run(token)
