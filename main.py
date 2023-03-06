@@ -1,5 +1,6 @@
 import discord
 import asyncio
+import sqlite3
 
 from discord import app_commands, NotFound, Forbidden, HTTPException
 from discord.ext import tasks
@@ -291,7 +292,6 @@ async def kick(interaction: discord.Interaction, usuario: discord.Member, razon:
 @app_commands.checks.has_permissions(manage_messages=True)
 @app_commands.describe(canal='Canal al que quieres enviar el mensaje')
 @app_commands.describe(texto='Texto a enviar')
-@app_commands.describe(imagen='Si deseas enviar una imágen junto con el mensaje')
 async def say(interaction: discord.Interaction, canal: discord.TextChannel, texto: str, menciones: Optional[discord.Role]):
 	"""Envia un mensaje usando el Bot"""
 
@@ -318,7 +318,34 @@ async def say(interaction: discord.Interaction, canal: discord.TextChannel, text
 		embed1.set_author(name=f'{guild.name}', icon_url=guild.icon)
 		await log_channel.send(embed=embed1)	
 	
-	
+# //////////////////////////////////////////////////////////////////// #
+
+@client.event
+async def on_message(message):
+	user = message.author.id
+	id_guild = message.guild.id
+	conn = sqlite3.connect('nombre_de_tu_db.db') 
+	cur = conn.cursor()
+	cur.execute('CREATE TABLE IF NOT EXISTS level_system (guild_id, user_id PRIMARY KEY,xp INTEGER NOT NULL, target_xp INTEGER NOT NULL, level INTEGER NOT NULL)')
+	cur.execute('INSERT OR IGNORE INTO level_system (guild_id, user_id, xp, target_xp, level) VALUES (?, ?, 0, 25, 0)', (id_guild, user) )
+
+	cur.execute('SELECT xp, target_xp, level FROM level_system WHERE user_id = ? AND guild_id = ?', (user, id_guild) )
+	results1 = cur.fetchone()
+	old_xp = results1[0]
+	new_xp = old_xp + 5
+	xp_to_level = results1[1]
+	old_level = results1[2]
+
+	if new_xp == xp_to_level:
+		new_level = old_level + 1
+		new_xp_to_level = xp_to_level + 25
+	else:
+		new_level = old_level
+		new_xp_to_level = xp_to_level	
+
+	cur.execute('UPDATE level_system SET xp = ?,target_xp = ? , level = ? WHERE user_id = ? AND guild_id = ?', (new_xp, new_xp_to_level, new_level, user, id_guild) )	
+	conn.commit()
+	conn.close()	
 	
 	
 	
