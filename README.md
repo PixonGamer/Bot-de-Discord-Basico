@@ -6,4 +6,5 @@ Un bot de Discord básico escrito totalmente con slash commands, creado con disc
 - Comando (/roles): muestra una lista completa de los roles de la guild.
 - Comando (/info_rol): muestra información relevante sobre un rol
 - Comando (/ban) y (/kick): Se explica solo
-- Menú contextual que muestra información sobre un usuario cuando das click derecho > aplicaciones > info 
+- Menú contextual que muestra información sobre un usuario cuando das click derecho > aplicaciones > info
+- Sistema de Niveles en SQLite 3
