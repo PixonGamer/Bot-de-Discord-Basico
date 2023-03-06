@@ -292,6 +292,7 @@ async def kick(interaction: discord.Interaction, usuario: discord.Member, razon:
 @app_commands.checks.has_permissions(manage_messages=True)
 @app_commands.describe(canal='Canal al que quieres enviar el mensaje')
 @app_commands.describe(texto='Texto a enviar')
+@app_commands.describe(menciones='Si quieres mencionar algún rol en específico')
 async def say(interaction: discord.Interaction, canal: discord.TextChannel, texto: str, menciones: Optional[discord.Role]):
 	"""Envia un mensaje usando el Bot"""
 
