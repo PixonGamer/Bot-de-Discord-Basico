@@ -325,29 +325,73 @@ async def say(interaction: discord.Interaction, canal: discord.TextChannel, text
 async def on_message(message):
 	user = message.author.id
 	id_guild = message.guild.id
-	conn = sqlite3.connect('nombre_de_tu_db.db') 
+	channel = message.channel
+	conn = sqlite3.connect('Database BOT.db', timeout=20)
 	cur = conn.cursor()
-	cur.execute('CREATE TABLE IF NOT EXISTS level_system (guild_id, user_id PRIMARY KEY,xp INTEGER NOT NULL, target_xp INTEGER NOT NULL, level INTEGER NOT NULL)')
-	cur.execute('INSERT OR IGNORE INTO level_system (guild_id, user_id, xp, target_xp, level) VALUES (?, ?, 0, 25, 0)', (id_guild, user) )
+	cur.execute('CREATE TABLE IF NOT EXISTS level_system (guild_id, user_id,xp INTEGER NOT NULL, target_xp INTEGER NOT NULL, level INTEGER NOT NULL)')
+	#cur.execute('INSERT OR IGNORE INTO level_system (guild_id, user_id, xp, target_xp, level) VALUES (?, ?, 0, 25, 0)', (id_guild, user) )
+	
 
-	cur.execute('SELECT xp, target_xp, level FROM level_system WHERE user_id = ? AND guild_id = ?', (user, id_guild) )
+	cur.execute('SELECT guild_id, user_id, xp, target_xp, level FROM level_system WHERE user_id = ? AND guild_id = ?', (user, id_guild) )
 	results1 = cur.fetchone()
-	old_xp = results1[0]
-	new_xp = old_xp + 5
-	xp_to_level = results1[1]
-	old_level = results1[2]
 
-	if new_xp == xp_to_level:
-		new_level = old_level + 1
-		new_xp_to_level = xp_to_level + 25
-	else:
-		new_level = old_level
-		new_xp_to_level = xp_to_level	
+	if results1 is not None and message.author.bot is False:
 
-	cur.execute('UPDATE level_system SET xp = ?,target_xp = ? , level = ? WHERE user_id = ? AND guild_id = ?', (new_xp, new_xp_to_level, new_level, user, id_guild) )	
+		old_xp = results1[2]
+		new_xp = old_xp + 5
+		xp_to_level = results1[3]
+		old_level = results1[4]
+
+		if new_xp >= xp_to_level:
+
+			new_level = old_level + 1
+			new_xp_to_level = xp_to_level + 25
+			embed = discord.Embed(title=f'¡Nuevo nivel!',description=f"¡Felicidades <@{user}>! acabas de alcanzar el nivel **{new_level}**", color=message.author.color)
+			embed.set_thumbnail(url=message.author.display_avatar)			
+			embed.set_footer(text=f'{message.guild.name}')
+			await channel.send(embed=embed)
+
+		else:
+			new_level = old_level
+			new_xp_to_level = xp_to_level
+
+		cur.execute('UPDATE level_system SET xp = ?,target_xp = ? , level = ? WHERE user_id = ? AND guild_id = ?', (new_xp, new_xp_to_level, new_level, user, id_guild) )
+		conn.commit()
+		
+	elif message.author.bot is False:
+
+		cur.execute('INSERT OR IGNORE INTO level_system (guild_id, user_id, xp, target_xp, level) VALUES (?, ?, 1, 25, 0)', (id_guild, user) )
+		conn.commit()
+		
 	conn.commit()
 	conn.close()	
 	
+########################################################################
 	
+@client.tree.command()
+async def leaderboard(interaction: discord.Interaction):
+	"""Muestra quienes tienen el nivel más alto"""
+	id_guild = interaction.guild.id
+
+	conn = sqlite3.connect('Database BOT.db', timeout=30)
+	cur = conn.cursor()
+	cur.execute('SELECT user_id, xp, level FROM level_system WHERE guild_id = ? ORDER BY level DESC, xp DESC LIMIT 10', (id_guild,) )
+	results = cur.fetchall()
+
 	
+	embed = discord.Embed(title=f'{interaction.guild.name}', color=0x4be25d, timestamp=interaction.created_at)
+
+	for i, pos in enumerate(results, start=1):
+		user_id, xp, level = pos
+
+		embed.add_field(name=' ', value=f'**{i}.** <@{user_id}> \n `Nivel:` **{level}** \n `Experiencia:` **{xp}**', inline=False)
+		embed.add_field(name=' ', value=' ', inline=False)			
+
+	embed.set_author(name='Tabla de niveles')
+	embed.set_thumbnail(url=interaction.guild.icon)			
+	#embed.set_footer(text=f'{interaction.guild.name}')
+
+	await interaction.response.send_message(embed=embed)
+	conn.close()
+		
   client.run(token)
