@@ -8,3 +8,4 @@ Un bot de Discord básico escrito totalmente con slash commands, creado con disc
 - Comando (/ban) y (/kick): Se explica solo
 - Menú contextual que muestra información sobre un usuario cuando das click derecho > aplicaciones > info
 - Sistema de Niveles en SQLite 3
+- Tabla de usuarios con el nivel más alto
