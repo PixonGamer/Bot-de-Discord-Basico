@@ -3,6 +3,7 @@ import asyncio
 import sqlite3
 
 from discord import app_commands, NotFound, Forbidden, HTTPException
+from discord.app_commands import Group, command
 from discord.ext import tasks
 from typing import Optional
 import random
@@ -197,28 +198,6 @@ async def info_rol(interaction: discord.Interaction, rol: discord.Role):
 	await interaction.response.send_message(embed = embed)
 
 
-
-
-@client.tree.command()
-async def seguridad_cuenta(interaction: discord.Interaction):
-	"Algunos consejos para la seguridad de tu cuenta en Discord"
-
-	tips = ['**Activa la autenticación de dos factores (A2F)**, en dado caso que tu contraseña sea comprometida, aun tendrían que sobrepasar la A2F para acceder a tu cuenta.',
-			'Algo muy básico: **usa tu sentido común.**',
-			'¿Ingresaste a un servidor y te piden que escanees un código QR con la aplicación de Discord para "verificarte"? están tratando de ingresar a tu cuenta, ningún BOT te pedirá que escanees un código QR en Discord. https://dat.place/content/images/2022/07/image-34.png',
-			'Revisa frecuentemente tus **Ajustes del Usuario** > **Dispositivos** y **Aplicaciones Autorizadas**',
-			'Verifica si el bot de verficación tiene el simbolo de verificado, hay algunos "dueños" que crean un bot para hacerse pasar por otro (Dyno, Wick, etc)',
-			'Discord o cualquier otra compañia nunca 1te contactará por medio de un MD en Discord, los mensajes de Discord Oficiales aparecerán en tu MD con la etíqueta de **"Sistema"**. https://dat.place/content/images/size/w1000/2022/07/image-3.png',
-			'No existe Nitro Gratis.',
-			'Para los Dueños de servidores: es muy recomendado utilizar bots Anti Raid y Anti Nuke cómo Wick, Beemo, etcétera.',
-			'No descargues cosas de dudosa procedencia, al creador del bot le hackearon la cuenta de Discord por tener desactivado el 2FA y descargarse un .APK :(',
-			'Un sitio recomendado que tiene más sugerencias para mejorar tu seguridad en Discord: https://dat.place/scams/',
-			'Asegurate que el canal de registros del bot solamente sea visible para tí, el dueño.'
-			'Evita utilizar/activar el permiso "Administrador" en Roles.']
-
-
-	await interaction.response.send_message( random.choice(tips), ephemeral = True)	
-	
 @client.tree.command()
 @app_commands.default_permissions(ban_members=True)
 @app_commands.checks.has_permissions(ban_members=True)
@@ -323,48 +302,46 @@ async def say(interaction: discord.Interaction, canal: discord.TextChannel, text
 
 @client.event
 async def on_message(message):
-	user = message.author.id
-	id_guild = message.guild.id
-	channel = message.channel
-	conn = sqlite3.connect('Database BOT.db', timeout=20)
-	cur = conn.cursor()
-	cur.execute('CREATE TABLE IF NOT EXISTS level_system (guild_id, user_id,xp INTEGER NOT NULL, target_xp INTEGER NOT NULL, level INTEGER NOT NULL)')
-	#cur.execute('INSERT OR IGNORE INTO level_system (guild_id, user_id, xp, target_xp, level) VALUES (?, ?, 0, 25, 0)', (id_guild, user) )
-	
 
-	cur.execute('SELECT guild_id, user_id, xp, target_xp, level FROM level_system WHERE user_id = ? AND guild_id = ?', (user, id_guild) )
-	results1 = cur.fetchone()
+	if message.author.bot is False:	
+		user = message.author.id
+		id_guild = message.guild.id
+		channel = message.channel
+		conn = sqlite3.connect('Database BOT.db', timeout=20)
+		cur = conn.cursor()
+		cur.execute('CREATE TABLE IF NOT EXISTS level_system (guild_id, user_id,xp INTEGER NOT NULL, target_xp INTEGER NOT NULL, level INTEGER NOT NULL)')
 
-	if results1 is not None and message.author.bot is False:
+		cur.execute('SELECT guild_id, user_id, xp, target_xp, level FROM level_system WHERE user_id = ? AND guild_id = ?', (user, id_guild) )
+		results1 = cur.fetchone()
+		
+		if results1 is not None: 
+			old_xp = results1[2]
+			new_xp = old_xp + 1
+			xp_to_level = results1[3]
+			old_level = results1[4]
 
-		old_xp = results1[2]
-		new_xp = old_xp + 5
-		xp_to_level = results1[3]
-		old_level = results1[4]
+			if new_xp >= xp_to_level:
 
-		if new_xp >= xp_to_level:
+				new_level = old_level + 1
+				new_xp_to_level = new_level * 10
+				embed = discord.Embed(title=f'¡Nuevo nivel!',description=f"¡Felicidades <@{user}>! acabas de alcanzar el nivel **{new_level}**", color=message.author.color)
+				embed.set_thumbnail(url=message.author.display_avatar)			
+				embed.set_footer(text=f'{message.guild.name}')
+				await channel.send(embed=embed)
 
-			new_level = old_level + 1
-			new_xp_to_level = xp_to_level + 25
-			embed = discord.Embed(title=f'¡Nuevo nivel!',description=f"¡Felicidades <@{user}>! acabas de alcanzar el nivel **{new_level}**", color=message.author.color)
-			embed.set_thumbnail(url=message.author.display_avatar)			
-			embed.set_footer(text=f'{message.guild.name}')
-			await channel.send(embed=embed)
+			else:
+				new_level = old_level
+				new_xp_to_level = xp_to_level
 
+			cur.execute('UPDATE level_system SET xp = ?,target_xp = ? , level = ? WHERE user_id = ? AND guild_id = ?', (new_xp, new_xp_to_level, new_level, user, id_guild) )
+			conn.commit()
 		else:
-			new_level = old_level
-			new_xp_to_level = xp_to_level
 
-		cur.execute('UPDATE level_system SET xp = ?,target_xp = ? , level = ? WHERE user_id = ? AND guild_id = ?', (new_xp, new_xp_to_level, new_level, user, id_guild) )
-		conn.commit()
-		
-	elif message.author.bot is False:
+			cur.execute('INSERT OR IGNORE INTO level_system (guild_id, user_id, xp, target_xp, level) VALUES (?, ?, 0, 5, 0)', (id_guild, user) )
+			conn.commit()						
 
-		cur.execute('INSERT OR IGNORE INTO level_system (guild_id, user_id, xp, target_xp, level) VALUES (?, ?, 1, 25, 0)', (id_guild, user) )
-		conn.commit()
-		
-	conn.commit()
-	conn.close()	
+		conn.commit()	
+		conn.close()
 	
 ########################################################################
 	
@@ -393,5 +370,89 @@ async def leaderboard(interaction: discord.Interaction):
 
 	await interaction.response.send_message(embed=embed)
 	conn.close()
-		
+	
+# //////////////////////////////////////////////////////////////////// #
+	
+my_group = Group(name='dar', description='description')
+
+@my_group.command()
+@app_commands.default_permissions(administrator=True)
+@app_commands.checks.has_permissions(administrator=True)
+@app_commands.describe(miembro='Miembro al que deseas darle nivel')
+@app_commands.describe(nivel='Nivel que se le dará al miembro (Máximo 100)')
+async def nivel(interaction: discord.Interaction, miembro: discord.Member, nivel: int):
+	"""Da un nivel en específico a un usuario"""
+
+	guild = interaction.guild
+
+	conn = sqlite3.connect('Database BOT.db', timeout=30)
+	cur = conn.cursor()
+	
+	if nivel <= 100 and miembro.bot is False:
+
+		cur.execute('SELECT user_id, target_xp, level FROM level_system WHERE guild_id = ? AND user_id = ?', (guild.id, miembro.id) )
+		cur.execute('UPDATE level_system SET level = ?, target_xp = ? WHERE user_id = ? AND guild_id = ?', (nivel, nivel * 10, miembro.id, guild.id) )
+		embed = discord.Embed(title=f'¡Nuevo nivel!',description=f"¡Felicidades <@{miembro.id}>! acabas de alcanzar el nivel **{nivel}**", color=miembro.color)
+		embed.set_thumbnail(url=miembro.display_avatar)			
+		embed.set_footer(text=f'Nivel dado por {interaction.user}')
+		await interaction.response.send_message(f"Comando ejecutado correctamente! se le ha otorgado a **{miembro}** el nivel **{nivel}**")				
+		await interaction.channel.send(embed=embed)
+
+	elif miembro.bot is False:
+
+		await interaction.response.send_message("ERROR: No se puede dar un numero mayor a 100", ephemeral=True)
+
+	else:
+
+		await interaction.response.send_message("ERROR: No le puedes dar niveles a un bot.", ephemeral=True)
+
+	conn.commit()	
+	conn.close()
+
+client.tree.add_command(my_group)
+
+
+# //////////////////////////////////////////////////////////////////// #
+
+group_1 = Group(name='tips', description='Diversos Tips para')
+
+@group_1.command()
+async def seguridad(interaction: discord.Interaction):
+	"""Algunos consejos para la seguridad de tu cuenta en Discord"""
+
+	tips = [
+		'**Activa la autenticación de dos factores (A2F)**, en dado caso que tu contraseña sea comprometida, aun tendrían que sobrepasar la A2F para acceder a tu cuenta.',
+		'Algo muy básico: **usa tu sentido común.**',
+		'¿Ingresaste a un servidor y te piden que escanees un código QR con la aplicación de Discord para "verificarte"? están tratando de ingresar a tu cuenta, ningún BOT te pedirá que escanees un código QR en Discord. https://dat.place/content/images/2022/07/image-34.png',
+		'Revisa frecuentemente tus **Ajustes del Usuario** > **Dispositivos** y **Aplicaciones Autorizadas**',
+		'Verifica si el bot de verficación tiene el simbolo de verificado, hay algunos "dueños" que crean un bot para hacerse pasar por otro (Dyno, Wick, etc)',
+		'Discord o cualquier otra compañia nunca 1te contactará por medio de un MD en Discord, los mensajes de Discord Oficiales aparecerán en tu MD con la etíqueta de **"Sistema"**. https://dat.place/content/images/size/w1000/2022/07/image-3.png',
+		'No existe Nitro Gratis.',
+		'Para los Dueños de servidores: es muy recomendado utilizar bots Anti Raid y Anti Nuke cómo Wick, Beemo, etcétera.',
+		'No descargues cosas de dudosa procedencia, al creador del bot le hackearon la cuenta de Discord por tener desactivado el 2FA y descargarse un .APK :(',
+		'Un sitio recomendado que tiene más sugerencias para mejorar tu seguridad en Discord: https://dat.place/scams/',
+		'Asegurate que el canal de registros del bot solamente sea visible para tí, el dueño.'
+		'Evita utilizar/activar el permiso "Administrador" en Roles.']
+
+	await interaction.response.send_message(random.choice(tips), ephemeral=True)
+
+@group_1.command()
+async def generales(interaction: discord.Interaction):
+	"""Consejos generales de Discord"""
+	tips = [
+	'¿Quieres escribir texto con diferentes colores y fondos? con la página <https://rebane2001.com/discord-colored-text-generator/> lo puedes hacer',
+	'¿Quieres hacer marcas de tiempo como <t:1678406160:D>, <t:1678406160:T>, <t:1678406160:F>, <t:1678406160:R> ? Con la página <https://hammertime.cyou/es> las puedes hacer',
+	'¿Deseas crear nuevos iconos que sean propios de tu servidor? con la herramienta <https://www.discordicon.com/> los puedes hacer, es muy sencillo de usar',
+	'<https://discords.com/emoji-list> es una página en la que podrás encontrar cientos de emojis, iconos y stickers para tu comunidad de Discord',
+	'<https://www.alternativestomee6.com/> es una página en la que podrás encontrar bots recomendados para cualquier función, desde automoderación hasta niveles, etcétera. Con el objectivo de dar a conocer más alternativas a MEE6']
+
+	await interaction.response.send_message(random.choice(tips), ephemeral=True)
+
+client.tree.add_command(group_1)
+	
+	
+	
+	
+	
+	
   client.run(token)
